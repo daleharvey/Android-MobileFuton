@@ -1,13 +1,21 @@
 package com.daleharvey.mobilefuton;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -25,7 +33,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.couchbase.libcouch.CouchbaseEmbeddedServer;
+import com.couchbase.libcouch.CouchbaseMobile;
 import com.couchbase.libcouch.ICouchClient;
 
 public class MobileFutonActivity extends Activity {
@@ -40,6 +48,7 @@ public class MobileFutonActivity extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
 		startCouch();
 	}
 
@@ -100,7 +109,7 @@ public class MobileFutonActivity extends Activity {
 	}
 
 	private void startCouch() {
-		CouchbaseEmbeddedServer couch = new CouchbaseEmbeddedServer(getBaseContext(), mCallback);
+		CouchbaseMobile couch = new CouchbaseMobile(getBaseContext(), mCallback);
 
 		try {
 			couch.copyIniFile("mobilefuton.ini");
@@ -204,14 +213,45 @@ public class MobileFutonActivity extends Activity {
 	private void ensureDesignDoc(String dbName, String url) {
 
 		try {
+
+			File hashCache = new File(CouchbaseMobile.dataPath() + "/couchapps/" + dbName + ".couchapphash");
 			String data = readAsset(getAssets(), dbName + ".json");
-			String ddocUrl = url + dbName + "/_design/" + dbName;
+			String md5 = md5(data);
+			String cachedHash;
+			Boolean toUpdate;
 
-			AndCouch req = AndCouch.get(ddocUrl);
+			try {
+				cachedHash = readFile(hashCache);
+				toUpdate = !md5.equals(cachedHash);
+			} catch (Exception e) {
+				e.printStackTrace();
+				toUpdate = true;
+			}
 
-			if (req.status == 404) {
-				AndCouch.put(url + dbName, null);
-				AndCouch.put(ddocUrl, data);
+			if (toUpdate == true) {
+
+				String ddocUrl = url + dbName + "/_design/" + dbName;
+
+				AndCouch req = AndCouch.get(ddocUrl);
+
+				if (req.status == 404) {
+					Log.v(TAG, "Installing Couchapp");
+					AndCouch.put(url + dbName, null);
+					AndCouch.put(ddocUrl, data);
+				} else if (req.status == 200) {
+					Log.v(TAG, "Couchapp Found, Updating");
+					String rev = req.json.getString("_rev");
+					JSONObject json = new JSONObject(data);
+					json.put("_rev", rev);
+					AndCouch.put(url + dbName, null);
+					AndCouch.put(ddocUrl, json.toString());
+				}
+
+				new File(hashCache.getParent()).mkdirs();
+				writeFile(hashCache, md5);
+
+			} else {
+				Log.v(TAG, "Couchapp up to date");
 			}
 
 		} catch (IOException e) {
@@ -231,4 +271,44 @@ public class MobileFutonActivity extends Activity {
 		return new String(buffer);
 	}
 
+    public static String md5(String input){
+        String res = "";
+        try {
+            MessageDigest algorithm = MessageDigest.getInstance("MD5");
+            algorithm.reset();
+            algorithm.update(input.getBytes());
+            byte[] md5 = algorithm.digest();
+            String tmp = "";
+            for (int i = 0; i < md5.length; i++) {
+                tmp = (Integer.toHexString(0xFF & md5[i]));
+                if (tmp.length() == 1) {
+                    res += "0" + tmp;
+                } else {
+                    res += tmp;
+                }
+            }
+        } catch (NoSuchAlgorithmException ex) {}
+        return res;
+    }
+
+    public static String readFile(File file) throws IOException {
+        StringBuffer fileData = new StringBuffer(1000);
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        char[] buf = new char[1024];
+        int numRead=0;
+        while((numRead=reader.read(buf)) != -1){
+            String readData = String.valueOf(buf, 0, numRead);
+            fileData.append(readData);
+            buf = new char[1024];
+        }
+        reader.close();
+        return fileData.toString();
+    }
+
+    public static void writeFile(File file, String data) throws IOException {
+    	FileWriter fstream = new FileWriter(file);
+    	BufferedWriter out = new BufferedWriter(fstream);
+    	out.write(data);
+    	out.close();
+    }
 }
