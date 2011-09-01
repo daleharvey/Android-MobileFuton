@@ -33,8 +33,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.couchbase.libcouch.CouchbaseMobile;
-import com.couchbase.libcouch.ICouchClient;
+import com.couchbase.android.CouchbaseMobile;
+import com.couchbase.android.ICouchbaseDelegate;
 
 public class MobileFutonActivity extends Activity {
 
@@ -67,9 +67,9 @@ public class MobileFutonActivity extends Activity {
 		}
 	}
 
-	private final ICouchClient mCallback = new ICouchClient.Stub() {
+	private final ICouchbaseDelegate mCallback = new ICouchbaseDelegate.Stub() {
 		@Override
-		public void couchStarted(String host, int port) {
+		public void couchbaseStarted(String host, int port) {
 
 			if (installProgress != null) {
 				installProgress.dismiss();
