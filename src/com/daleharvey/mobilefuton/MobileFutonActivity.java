@@ -67,7 +67,7 @@ public class MobileFutonActivity extends Activity {
 		}
 	}
 
-	private final ICouchbaseDelegate mCallback = new ICouchbaseDelegate.Stub() {
+	private final ICouchbaseDelegate mCallback = new ICouchbaseDelegate() {
 		@Override
 		public void couchbaseStarted(String host, int port) {
 

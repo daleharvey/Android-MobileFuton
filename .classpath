@@ -1,9 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<classpath>
+<?xml version="1.0" encoding="UTF-8"?><classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="gen"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry kind="lib" path="libs/commons-compress-1.0.jar"/>
-	<classpathentry kind="lib" path="libs/couchbase.jar"/>
 	<classpathentry kind="output" path="bin"/>
-</classpath>
+<classpathentry kind="lib" path="libs/couchbase.jar"/></classpath>

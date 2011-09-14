@@ -11,8 +11,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        
-        <service android:name="com.couchbase.libcouch.CouchService" android:enabled="true" android:exported="false"/>
 
     <service android:name="com.couchbase.android.CouchbaseService" android:enabled="true" android:exported="false"/></application>
     
