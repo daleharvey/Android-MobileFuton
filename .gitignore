@@ -1,2 +1,5 @@
 bin/
 gen/
+assets/install
+assets/lib/
+libs/
