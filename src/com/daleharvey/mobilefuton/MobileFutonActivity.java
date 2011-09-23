@@ -15,7 +15,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -84,29 +83,12 @@ public class MobileFutonActivity extends Activity {
 		}
 
 		@Override
-		public void installing(int completed, int total) {
-			ensureProgressDialog();
-			installProgress.setTitle("Installing");
-			installProgress.setProgress(completed);
-			installProgress.setMax(total);
-		}
-
-		@Override
 		public void exit(String error) {
 			Log.v(TAG, error);
 			couchError();
 		}
 	};
 
-	private void ensureProgressDialog() {
-		if (installProgress == null) {
-			installProgress = new ProgressDialog(MobileFutonActivity.this);
-			installProgress.setTitle(" ");
-			installProgress.setCancelable(false);
-			installProgress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-			installProgress.show();
-		}
-	}
 
 	private void startCouch() {
 		CouchbaseMobile couch = new CouchbaseMobile(getBaseContext(), mCallback);
@@ -214,44 +196,15 @@ public class MobileFutonActivity extends Activity {
 
 		try {
 
-			File hashCache = new File(CouchbaseMobile.dataPath() + "/couchapps/" + dbName + ".couchapphash");
 			String data = readAsset(getAssets(), dbName + ".json");
-			String md5 = md5(data);
-			String cachedHash;
-			Boolean toUpdate;
+			String ddocUrl = url + dbName + "/_design/" + dbName;
 
-			try {
-				cachedHash = readFile(hashCache);
-				toUpdate = !md5.equals(cachedHash);
-			} catch (Exception e) {
-				e.printStackTrace();
-				toUpdate = true;
-			}
+			AndCouch req = AndCouch.get(ddocUrl);
 
-			if (toUpdate == true) {
-
-				String ddocUrl = url + dbName + "/_design/" + dbName;
-
-				AndCouch req = AndCouch.get(ddocUrl);
-
-				if (req.status == 404) {
-					Log.v(TAG, "Installing Couchapp");
-					AndCouch.put(url + dbName, null);
-					AndCouch.put(ddocUrl, data);
-				} else if (req.status == 200) {
-					Log.v(TAG, "Couchapp Found, Updating");
-					String rev = req.json.getString("_rev");
-					JSONObject json = new JSONObject(data);
-					json.put("_rev", rev);
-					AndCouch.put(url + dbName, null);
-					AndCouch.put(ddocUrl, json.toString());
-				}
-
-				new File(hashCache.getParent()).mkdirs();
-				writeFile(hashCache, md5);
-
-			} else {
-				Log.v(TAG, "Couchapp up to date");
+			if (req.status == 404) {
+				Log.v(TAG, "Installing Couchapp");
+				AndCouch.put(url + dbName, null);
+				AndCouch.put(ddocUrl, data);
 			}
 
 		} catch (IOException e) {
