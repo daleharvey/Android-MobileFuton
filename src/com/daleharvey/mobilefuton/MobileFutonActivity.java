@@ -1,27 +1,15 @@
 package com.daleharvey.mobilefuton;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
-
-import org.json.JSONException;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.ServiceConnection;
-import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -40,8 +28,8 @@ public class MobileFutonActivity extends Activity {
 	private final MobileFutonActivity self = this;
 	protected static final String TAG = "CouchAppActivity";
 
+	private CouchbaseMobile couch;
 	private ServiceConnection couchServiceConnection;
-	private ProgressDialog installProgress;
 	private WebView webView;
 
 	@Override
@@ -70,15 +58,16 @@ public class MobileFutonActivity extends Activity {
 		@Override
 		public void couchbaseStarted(String host, int port) {
 
-			if (installProgress != null) {
-				installProgress.dismiss();
-			}
-
 			String url = "http://" + host + ":" + Integer.toString(port) + "/";
 		    String ip = getLocalIpAddress();
 		    String param = (ip == null) ? "" : "?ip=" + ip;
 
-			ensureDesignDoc("mobilefuton", url);
+		    try {
+				couch.installDatabase("mobilefuton.couch");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 			launchFuton(url + "mobilefuton/_design/mobilefuton/index.html" + param);
 		}
 
@@ -91,7 +80,7 @@ public class MobileFutonActivity extends Activity {
 
 
 	private void startCouch() {
-		CouchbaseMobile couch = new CouchbaseMobile(getBaseContext(), mCallback);
+		couch = new CouchbaseMobile(getBaseContext(), mCallback);
 
 		try {
 			couch.copyIniFile("mobilefuton.ini");
@@ -125,6 +114,7 @@ public class MobileFutonActivity extends Activity {
 	}
 
 	private void launchFuton(String url) {
+
 		webView = new WebView(MobileFutonActivity.this);
 		webView.setWebChromeClient(new WebChromeClient());
 		webView.setWebViewClient(new CustomWebViewClient());
@@ -187,81 +177,4 @@ public class MobileFutonActivity extends Activity {
 		}
 		return null;
 	}
-
-	/*
-	* Will check for the existence of a design doc and if it doesnt exist,
-	* upload the json found at dataPath to create it
-	*/
-	private void ensureDesignDoc(String dbName, String url) {
-
-		try {
-
-			String data = readAsset(getAssets(), dbName + ".json");
-			String ddocUrl = url + dbName + "/_design/" + dbName;
-
-			AndCouch req = AndCouch.get(ddocUrl);
-
-			if (req.status == 404) {
-				Log.v(TAG, "Installing Couchapp");
-				AndCouch.put(url + dbName, null);
-				AndCouch.put(ddocUrl, data);
-			}
-
-		} catch (IOException e) {
-			e.printStackTrace();
-			// There is no design doc to load
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-	};
-
-	public static String readAsset(AssetManager assets, String path) throws IOException {
-		InputStream is = assets.open(path);
-		int size = is.available();
-		byte[] buffer = new byte[size];
-		is.read(buffer);
-		is.close();
-		return new String(buffer);
-	}
-
-    public static String md5(String input){
-        String res = "";
-        try {
-            MessageDigest algorithm = MessageDigest.getInstance("MD5");
-            algorithm.reset();
-            algorithm.update(input.getBytes());
-            byte[] md5 = algorithm.digest();
-            String tmp = "";
-            for (int i = 0; i < md5.length; i++) {
-                tmp = (Integer.toHexString(0xFF & md5[i]));
-                if (tmp.length() == 1) {
-                    res += "0" + tmp;
-                } else {
-                    res += tmp;
-                }
-            }
-        } catch (NoSuchAlgorithmException ex) {}
-        return res;
-    }
-
-    public static String readFile(File file) throws IOException {
-        StringBuffer fileData = new StringBuffer(1000);
-        BufferedReader reader = new BufferedReader(new FileReader(file));
-        char[] buf = new char[1024];
-        int numRead=0;
-        while((numRead=reader.read(buf)) != -1){
-            String readData = String.valueOf(buf, 0, numRead);
-            fileData.append(readData);
-            buf = new char[1024];
-        }
-        reader.close();
-        return fileData.toString();
-    }
-
-    public static void writeFile(File file, String data) throws IOException {
-    	FileWriter fstream = new FileWriter(file);
-    	BufferedWriter out = new BufferedWriter(fstream);
-    	out.write(data);
-    	out.close();
-    }
 }
